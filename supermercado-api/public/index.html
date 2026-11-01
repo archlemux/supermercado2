@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supermercado en Línea</title>
+<style>
+:root{--bg:#f6f8f5;--card:#fff;--text:#1d2b20;--muted:#667a6b;--brand:#2e7d32;--on:#fff;--border:#dfe5dc;--bad:#c62828;--soft:#e8f3e8}
+@media (prefers-color-scheme:dark){:root{--bg:#121613;--card:#1c221d;--text:#e8efe9;--muted:#9aa89d;--brand:#4caf50;--on:#0d1a0f;--border:#2c352e;--bad:#ef5350;--soft:#233126}}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,sans-serif}
+body{background:var(--bg);color:var(--text)}
+header{background:var(--brand);color:var(--on);padding:.8rem 1.5rem;display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+header h1{font-size:1.25rem}
+nav{display:flex;gap:.5rem;flex-wrap:wrap}
+nav button,.chip{border:1px solid color-mix(in srgb,var(--on) 50%,transparent);background:transparent;color:var(--on);padding:.4rem .9rem;border-radius:16px;cursor:pointer;font-size:.9rem}
+nav button.on{background:var(--on);color:var(--brand);font-weight:600}
+main{max-width:1150px;margin:0 auto;padding:1.5rem}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin-bottom:1.2rem}
+input,select,textarea{width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:.9rem}
+label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:.2rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem}
+.prod{cursor:pointer;display:flex;flex-direction:column;gap:.35rem;transition:transform .15s}
+.prod:hover{transform:translateY(-3px)}
+.prod img{width:100%;height:130px;object-fit:cover;border-radius:8px;background:var(--soft)}
+.price{font-weight:700;color:var(--brand);font-size:1.1rem}
+.muted{color:var(--muted);font-size:.85rem}
+.badge{display:inline-block;padding:.1rem .6rem;border-radius:10px;font-size:.75rem;background:var(--soft);color:var(--brand);font-weight:600}
+.badge.out{background:#fdecea;color:var(--bad)}
+.btn{background:var(--brand);color:var(--on);border:none;padding:.55rem 1rem;border-radius:8px;cursor:pointer;font-weight:600}
+.btn.alt{background:var(--soft);color:var(--brand)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+form .row{margin-bottom:.6rem}
+h2{margin-bottom:.8rem;font-size:1.15rem}h3{margin-bottom:.6rem;font-size:1rem}
+dialog{border:none;border-radius:12px;padding:1.2rem;max-width:480px;width:92%;background:var(--card);color:var(--text)}
+dialog::backdrop{background:#0008}
+#toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);padding:.6rem 1.2rem;border-radius:8px;color:#fff;display:none;z-index:20;max-width:90%}
+details{margin-top:2rem}summary{cursor:pointer;color:var(--muted)}
+pre{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.8rem;overflow:auto;max-height:260px;font-size:.78rem;margin-top:.5rem;white-space:pre-wrap}
+.addr{border-bottom:1px solid var(--border);padding:.5rem 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛒 Supermercado en Línea</h1>
+  <nav>
+    <button data-tab="catalogo" class="on">Catálogo</button>
+    <button data-tab="cuenta">Mi cuenta</button>
+    <button data-tab="admin">Administración</button>
+  </nav>
+  <div><span id="who" class="chip" style="border:none">Sin sesión</span> <button id="logout" class="chip" hidden>Salir</button></div>
+</header>
+<main>
+<section id="catalogo" class="on">
+  <h2>Catálogo <span class="muted">(RF-04, RF-05, RF-06)</span></h2>
+  <form id="filters" class="filters">
+    <div><label>Buscar</label><input id="f-search" placeholder="Nombre o marca"></div>
+    <div><label>Categoría</label><select id="f-cat"></select></div>
+    <div><label>Subcategoría</label><select id="f-sub"></select></div>
+    <div><label>Marca</label><input id="f-brand" placeholder="Ej. Roa"></div>
+    <div><label>Precio mín.</label><input id="f-min" type="number" min="0"></div>
+    <div><label>Precio máx.</label><input id="f-max" type="number" min="0"></div>
+    <div><label>Disponibilidad</label><select id="f-stock"><option value="">Todos</option><option value="true">Con stock</option><option value="false">Agotados</option></select></div>
+  </form>
+  <p id="count" class="muted" style="margin-bottom:.8rem"></p>
+  <div id="grid" class="grid"></div>
+</section>
+
+<section id="cuenta">
+  <div id="guest" class="cols">
+    <div class="card"><h3>Iniciar sesión (RF-01)</h3>
+      <form id="login-form">
+        <div class="row"><label>Correo</label><input id="l-email" type="email" required></div>
+        <div class="row"><label>Contraseña</label><input id="l-pass" type="password" required></div>
+        <button class="btn">Entrar</button>
+      </form>
+      <p class="muted" style="margin:.8rem 0 .4rem">Cuentas de demostración:</p>
+      <button class="btn alt" data-demo="admin@supermercado.com|Admin123">Administrador</button>
+      <button class="btn alt" data-demo="cliente@supermercado.com|Cliente123">Cliente</button>
+      <button class="btn alt" data-demo="repartidor@supermercado.com|Repartidor123">Repartidor</button>
+    </div>
+    <div class="card"><h3>Crear cuenta (RF-01)</h3>
+      <form id="reg-form">
+        <div class="row"><label>Nombre</label><input id="r-name" required></div>
+        <div class="row"><label>Correo</label><input id="r-email" type="email" required></div>
+        <div class="row"><label>Contraseña (8+ con letras y números)</label><input id="r-pass" type="password" required></div>
+        <div class="row"><label>Teléfono (opcional)</label><input id="r-phone"></div>
+        <button class="btn">Registrarme</button>
+      </form>
+    </div>
+  </div>
+  <div id="member" class="cols" hidden>
+    <div class="card"><h3>Mi perfil (RF-02, RF-03)</h3><div id="profile"></div></div>
+    <div class="card"><h3>Mis direcciones (RF-02)</h3><div id="addrs"></div>
+      <form id="addr-form" style="margin-top:.8rem">
+        <div class="row"><label>Nombre (Casa, Trabajo...)</label><input id="a-label" required></div>
+        <div class="row"><label>Dirección</label><input id="a-street" required></div>
+        <div class="row"><label>Ciudad</label><input id="a-city" required></div>
+        <button class="btn">Agregar dirección</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="admin">
+  <p class="muted" style="margin-bottom:1rem">Solo el rol ADMINISTRADOR puede usar estos formularios. Prueba entrar como Cliente y verás el error 403 (RF-03).</p>
+  <div class="cols">
+    <div class="card"><h3>Crear categoría (RF-04)</h3>
+      <form id="cat-form">
+        <div class="row"><label>Nombre</label><input id="c-name" required></div>
+        <div class="row"><label>Subcategorías (separadas por coma)</label><input id="c-subs" placeholder="Detergentes, Papel"></div>
+        <button class="btn">Crear categoría</button>
+      </form>
+    </div>
+    <div class="card"><h3>Crear producto (RF-06)</h3>
+      <form id="prod-form">
+        <div class="row"><label>Nombre</label><input id="p-name" required></div>
+        <div class="row"><label>Descripción</label><input id="p-desc" required></div>
+        <div class="row"><label>Marca</label><input id="p-brand" required></div>
+        <div class="row"><label>Unidad (500 g, 1 L...)</label><input id="p-unit" required></div>
+        <div class="row"><label>Precio (COP)</label><input id="p-price" type="number" min="1" required></div>
+        <div class="row"><label>Stock</label><input id="p-stock" type="number" min="0" required></div>
+        <div class="row"><label>Categoría</label><select id="p-cat"></select></div>
+        <div class="row"><label>Subcategoría</label><select id="p-sub"></select></div>
+        <button class="btn">Crear producto</button>
+      </form>
+    </div>
+    <div class="card"><h3>Cambiar rol de un usuario (RF-03)</h3>
+      <form id="role-form">
+        <div class="row"><label>ID del usuario (1 admin, 2 cliente, 3 repartidor)</label><input id="u-id" type="number" min="1" required></div>
+        <div class="row"><label>Nuevo rol</label><select id="u-role"><option>CLIENTE</option><option>ADMINISTRADOR</option><option>REPARTIDOR</option></select></div>
+        <button class="btn">Cambiar rol</button>
+      </form>
+      <h3 style="margin-top:1.2rem">Eliminar producto</h3>
+      <form id="del-form">
+        <div class="row"><label>ID del producto</label><input id="d-id" type="number" min="1" required></div>
+        <button class="btn alt">Eliminar</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<details open><summary>Registro de llamadas a la API (para ver que todo funciona)</summary><pre id="log">Aún no hay llamadas.</pre></details>
+</main>
+
+<dialog id="dlg"><div id="dlg-body"></div><p style="margin-top:1rem"><button class="btn" onclick="dlg.close()">Cerrar</button></p></dialog>
+<div id="toast"></div>
+
+<script>
+const API = "/api/v1";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (n) => "$ " + Number(n).toLocaleString("es-CO");
+let token = localStorage.getItem("token") || "";
+let categories = [];
+const logs = [];
+
+function toast(msg, ok = true) {
+  const t = $("toast");
+  t.textContent = msg; t.style.background = ok ? "#2e7d32" : "#c62828"; t.style.display = "block";
+  clearTimeout(toast.id); toast.id = setTimeout(() => (t.style.display = "none"), 3500);
+}
+
+async function api(path, { method = "GET", body } = {}) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = res.status === 204 ? null : await res.json();
+  logs.unshift(`${method} ${path} → ${res.status}\n${data ? JSON.stringify(data, null, 2).slice(0, 600) : "(sin contenido)"}`);
+  $("log").textContent = logs.slice(0, 6).join("\n\n────────\n");
+  if (!res.ok) throw new Error(data.error.message + (data.error.details ? ": " + data.error.details.join("; ") : ""));
+  return data;
+}
+const run = (fn) => async (e) => { e?.preventDefault?.(); try { await fn(e); } catch (err) { toast(err.message, false); } };
+
+// Pestañas
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("nav button, section").forEach((x) => x.classList.remove("on"));
+  b.classList.add("on"); $(b.dataset.tab).classList.add("on");
+}));
+
+// Categorías y filtros (RF-04, RF-05)
+function fillSub(catSel, subSel, allLabel) {
+  const cat = categories.find((c) => String(c.id) === catSel.value);
+  subSel.innerHTML = (allLabel ? `<option value="">${allLabel}</option>` : "") +
+    (cat ? cat.subcategories.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("") : "");
+}
+async function loadCategories() {
+  categories = (await api("/categories")).data;
+  $("f-cat").innerHTML = `<option value="">Todas</option>` + categories.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  $("p-cat").innerHTML = categories.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  fillSub($("f-cat"), $("f-sub"), "Todas"); fillSub($("p-cat"), $("p-sub"));
+}
+async function loadProducts() {
+  const q = new URLSearchParams({ limit: "50" });
+  const set = (k, v) => v !== "" && q.set(k, v);
+  set("search", $("f-search").value.trim()); set("categoryId", $("f-cat").value); set("subcategoryId", $("f-sub").value);
+  set("brand", $("f-brand").value.trim()); set("minPrice", $("f-min").value); set("maxPrice", $("f-max").value); set("inStock", $("f-stock").value);
+  try {
+    const r = await api("/products?" + q);
+    $("count").textContent = `${r.total} producto(s) encontrado(s)`;
+    $("grid").innerHTML = r.data.map((p) => `
+      <div class="card prod" data-id="${p.id}">
+        <img src="${esc(p.images[0] || "")}" alt="${esc(p.name)}" onerror="this.style.visibility='hidden'">
+        <strong>${esc(p.name)}</strong>
+        <span class="muted">${esc(p.brand)} · ${esc(p.category?.name)} › ${esc(p.subcategory?.name)}</span>
+        <span class="price">${money(p.price)}</span>
+        <span class="badge ${p.available ? "" : "out"}">${p.available ? "Disponible: " + p.stock + " uds" : "Agotado"}</span>
+      </div>`).join("") || `<p class="muted">No se encontraron productos.</p>`;
+  } catch (err) { $("count").textContent = ""; $("grid").innerHTML = ""; toast(err.message, false); }
+}
+$("f-cat").addEventListener("change", () => { fillSub($("f-cat"), $("f-sub"), "Todas"); loadProducts(); });
+$("p-cat").addEventListener("change", () => fillSub($("p-cat"), $("p-sub")));
+$("filters").addEventListener("input", loadProducts);
+$("filters").addEventListener("submit", (e) => e.preventDefault());
+
+// Ficha de producto (RF-06)
+$("grid").addEventListener("click", run(async (e) => {
+  const card = e.target.closest(".prod"); if (!card) return;
+  const p = await api("/products/" + card.dataset.id);
+  $("dlg-body").innerHTML = `
+    <img src="${esc(p.images[0] || "")}" style="width:100%;height:190px;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">
+    <h2 style="margin-top:.8rem">${esc(p.name)}</h2>
+    <p class="muted">${esc(p.brand)} · ${esc(p.unit)} · ${esc(p.sku)}</p>
+    <p class="price" style="margin:.4rem 0">${money(p.price)}</p>
+    <p>${esc(p.description)}</p>
+    <p class="muted" style="margin-top:.5rem">${esc(p.category?.name)} › ${esc(p.subcategory?.name)}</p>
+    <p style="margin-top:.4rem"><span class="badge ${p.available ? "" : "out"}">${p.available ? "Disponible: " + p.stock + " uds" : "Agotado"}</span></p>`;
+  $("dlg").showModal();
+}));
+
+// Sesión (RF-01, RF-02, RF-03)
+async function refreshUser() {
+  if (!token) { $("who").textContent = "Sin sesión"; $("logout").hidden = true; $("guest").hidden = false; $("member").hidden = true; return; }
+  try {
+    const me = await api("/users/me");
+    const addrs = (await api("/users/me/addresses")).data;
+    $("who").textContent = `${me.name} · ${me.role}`; $("logout").hidden = false; $("guest").hidden = true; $("member").hidden = false;
+    $("profile").innerHTML = `<p><strong>${esc(me.name)}</strong></p><p class="muted">${esc(me.email)}</p><p style="margin-top:.5rem">Rol: <span class="badge">${esc(me.role)}</span></p><p class="muted" style="margin-top:.5rem">ID de usuario: ${me.id}</p>`;
+    $("addrs").innerHTML = addrs.map((a) => `<div class="addr"><strong>${esc(a.label)}</strong> ${a.isDefault ? '<span class="badge">Principal</span>' : ""}<br><span class="muted">${esc(a.street)}, ${esc(a.city)}</span></div>`).join("") || `<p class="muted">Aún no tienes direcciones.</p>`;
+  } catch { token = ""; localStorage.removeItem("token"); refreshUser(); }
+}
+async function login(email, password) {
+  const r = await api("/auth/login", { method: "POST", body: { email, password } });
+  token = r.token; localStorage.setItem("token", token);
+  toast("Sesión iniciada como " + r.user.role); await refreshUser();
+}
+$("login-form").addEventListener("submit", run(() => login($("l-email").value, $("l-pass").value)));
+document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", run(() => login(...b.dataset.demo.split("|")))));
+$("reg-form").addEventListener("submit", run(async () => {
+  const body = { name: $("r-name").value, email: $("r-email").value, password: $("r-pass").value };
+  if ($("r-phone").value) body.phone = $("r-phone").value;
+  await api("/auth/register", { method: "POST", body });
+  toast("Cuenta creada. Iniciando sesión..."); await login(body.email, body.password);
+}));
+$("logout").addEventListener("click", () => { token = ""; localStorage.removeItem("token"); toast("Sesión cerrada"); refreshUser(); });
+$("addr-form").addEventListener("submit", run(async () => {
+  await api("/users/me/addresses", { method: "POST", body: { label: $("a-label").value, street: $("a-street").value, city: $("a-city").value } });
+  $("addr-form").reset(); toast("Dirección agregada"); await refreshUser();
+}));
+
+// Administración (RF-03, RF-04, RF-06)
+$("cat-form").addEventListener("submit", run(async () => {
+  const subcategories = $("c-subs").value.split(",").map((s) => s.trim()).filter(Boolean);
+  await api("/categories", { method: "POST", body: { name: $("c-name").value, subcategories } });
+  toast("Categoría creada"); $("cat-form").reset(); await loadCategories();
+}));
+$("prod-form").addEventListener("submit", run(async () => {
+  await api("/products", { method: "POST", body: {
+    name: $("p-name").value, description: $("p-desc").value, brand: $("p-brand").value, unit: $("p-unit").value,
+    price: Number($("p-price").value), stock: Number($("p-stock").value),
+    categoryId: Number($("p-cat").value), subcategoryId: Number($("p-sub").value), images: [] } });
+  toast("Producto creado"); $("prod-form").reset(); fillSub($("p-cat"), $("p-sub")); await loadProducts();
+}));
+$("role-form").addEventListener("submit", run(async () => {
+  const u = await api(`/users/${$("u-id").value}/role`, { method: "PATCH", body: { role: $("u-role").value } });
+  toast(`${u.name} ahora es ${u.role}`);
+}));
+$("del-form").addEventListener("submit", run(async () => {
+  await api("/products/" + $("d-id").value, { method: "DELETE" });
+  toast("Producto eliminado"); $("del-form").reset(); await loadProducts();
+}));
+
+(async () => { try { await loadCategories(); await loadProducts(); await refreshUser(); } catch (err) { toast(err.message, false); } })();
+</script>
+</body>
+</html>
